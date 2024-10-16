@@ -2,9 +2,13 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import altair as alt
-import speech_recognition as sr
 import joblib
+from streamlit_webrtc import webrtc_streamer, AudioProcessorBase, ClientSettings
+import av
+import io
+import speech_recognition as sr
 
+# Load the emotion detection model
 pipe_lr = joblib.load(open("text_emotion.pkl", "rb"))
 
 emotions_emoji_dict = {"anger": "😠", "disgust": "🤮", "fear": "😨😱", "happy": "🤗", "joy": "😂", "neutral": "😐", 
@@ -18,19 +22,27 @@ def get_prediction_proba(docx):
     results = pipe_lr.predict_proba([docx])
     return results
 
-def record_and_convert():
-    r = sr.Recognizer()
-    with sr.Microphone() as source:
-        st.info("Listening...")
-        audio = r.listen(source)
-        try:
-            st.info("Recognizing...")
-            return r.recognize_google(audio)
-        except sr.UnknownValueError:
-            st.error("Could not understand the audio")
-        except sr.RequestError:
-            st.error("Error with the Google API")
-    return ""
+class AudioProcessor(AudioProcessorBase):
+    def __init__(self):
+        self.recognizer = sr.Recognizer()
+        self.text = None
+
+    def recv(self, frame: av.AudioFrame) -> av.AudioFrame:
+        # Convert frame to wav format
+        wav_data = io.BytesIO()
+        frame.to_ndarray().tofile(wav_data)
+
+        # Recognize audio using Google Speech API
+        with sr.AudioFile(io.BytesIO(wav_data.getvalue())) as source:
+            audio_data = self.recognizer.record(source)
+            try:
+                self.text = self.recognizer.recognize_google(audio_data)
+            except sr.UnknownValueError:
+                self.text = "Could not understand audio"
+            except sr.RequestError:
+                self.text = "API unavailable"
+
+        return frame
 
 def main():
     st.title("Text Emotion Detection")
@@ -47,8 +59,17 @@ def main():
             process_text(raw_text)
 
     elif option == "Record Voice":
-        if st.button("Record"):
-            raw_text = record_and_convert()
+        webrtc_ctx = webrtc_streamer(
+            key="speech-to-text",
+            mode="sendrecv",
+            audio_processor_factory=AudioProcessor,
+            client_settings=ClientSettings(
+                rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+                media_stream_constraints={"audio": True, "video": False},
+            ),
+        )
+        if webrtc_ctx.state.playing and webrtc_ctx.audio_processor:
+            raw_text = webrtc_ctx.audio_processor.text
             if raw_text:
                 st.write("Transcribed Text: ", raw_text)
                 process_text(raw_text)
