@@ -28,19 +28,18 @@ class AudioProcessor(AudioProcessorBase):
         self.text = None
 
     def recv(self, frame: av.AudioFrame) -> av.AudioFrame:
-        # Convert frame to wav format
-        wav_data = io.BytesIO()
-        frame.to_ndarray().tofile(wav_data)
-
-        # Recognize audio using Google Speech API
-        with sr.AudioFile(io.BytesIO(wav_data.getvalue())) as source:
-            audio_data = self.recognizer.record(source)
-            try:
-                self.text = self.recognizer.recognize_google(audio_data)
-            except sr.UnknownValueError:
-                self.text = "Could not understand audio"
-            except sr.RequestError:
-                self.text = "API unavailable"
+        # Convert frame to raw audio data
+        audio_data = np.array(frame.to_ndarray()).flatten().astype(np.int16).tobytes()
+        
+        # Process the audio with SpeechRecognition
+        audio_stream = sr.AudioData(audio_data, frame.sample_rate, 2)  # 2: sample width (bytes)
+        
+        try:
+            self.text = self.recognizer.recognize_google(audio_stream)
+        except sr.UnknownValueError:
+            self.text = "Could not understand audio"
+        except sr.RequestError:
+            self.text = "API unavailable"
 
         return frame
 
