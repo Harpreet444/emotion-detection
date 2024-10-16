@@ -6,7 +6,6 @@ import altair as alt
 import joblib
 from streamlit_webrtc import webrtc_streamer, AudioProcessorBase, WebRtcMode
 import av
-import asyncio
 
 # Load the emotion detection model
 pipe_lr = joblib.load(open("text_emotion.pkl", "rb"))
@@ -64,22 +63,6 @@ def process_text(raw_text):
         fig = alt.Chart(proba_df_clean).mark_bar().encode(x='emotions', y='probability', color='emotions')
         st.altair_chart(fig, use_container_width=True)
 
-async def stream_audio():
-    webrtc_ctx = webrtc_streamer(
-        key="speech-to-text",
-        mode=WebRtcMode.SENDRECV,
-        rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-        media_stream_constraints={"audio": True, "video": False},
-        audio_processor_factory=AudioProcessor,
-    )
-
-    if webrtc_ctx.state.playing and webrtc_ctx.audio_processor:
-        if st.button("Stop"):
-            raw_text = webrtc_ctx.audio_processor.text
-            if raw_text and raw_text != "Could not understand audio":
-                st.write("Transcribed Text: ", raw_text)
-                process_text(raw_text)
-
 def main():
     st.title("Text Emotion Detection")
     st.subheader("Detect Emotions In Text or Voice")
@@ -96,8 +79,20 @@ def main():
             process_text(raw_text)
 
     elif option == "Record Voice":
-        # Use asyncio.run() to ensure proper handling of async code
-        asyncio.run(stream_audio())
+        webrtc_ctx = webrtc_streamer(
+            key="speech-to-text",
+            mode=WebRtcMode.SENDRECV,
+            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+            media_stream_constraints={"audio": True, "video": False},
+            audio_processor_factory=AudioProcessor,
+        )
+
+        if webrtc_ctx.state.playing and webrtc_ctx.audio_processor:
+            if st.button("Stop"):
+                raw_text = webrtc_ctx.audio_processor.text
+                if raw_text and raw_text != "Could not understand audio":
+                    st.write("Transcribed Text: ", raw_text)
+                    process_text(raw_text)
 
 if __name__ == '__main__':
     main()
