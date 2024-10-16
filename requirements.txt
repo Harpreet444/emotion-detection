@@ -10,4 +10,4 @@ joblib
 tensorflow
 keras
 streamlit-webrtc
-speech_recognition
+SpeechRecognition
