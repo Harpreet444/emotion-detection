@@ -4,9 +4,8 @@ import pandas as pd
 import numpy as np
 import altair as alt
 import joblib
-from streamlit_webrtc import webrtc_streamer, AudioProcessorBase, ClientSettings, WebRtcMode
+from streamlit_webrtc import webrtc_streamer, AudioProcessorBase, WebRtcMode
 import av
-import io
 
 # Load the emotion detection model
 pipe_lr = joblib.load(open("text_emotion.pkl", "rb"))
@@ -28,12 +27,11 @@ class AudioProcessor(AudioProcessorBase):
         self.text = None
 
     def recv(self, frame: av.AudioFrame) -> av.AudioFrame:
-        # Convert frame to numpy array (audio data)
         raw_audio = frame.to_ndarray().flatten()
         audio_data = np.int16(raw_audio).tobytes()
 
-        # Process the audio data with SpeechRecognition
-        audio_stream = sr.AudioData(audio_data, frame.sample_rate, 2)  # Adjust sample width and sample rate
+        # Process the audio with SpeechRecognition
+        audio_stream = sr.AudioData(audio_data, frame.sample_rate, 2)
         try:
             self.text = self.recognizer.recognize_google(audio_stream)
         except sr.UnknownValueError:
@@ -47,7 +45,8 @@ def main():
     st.title("Text Emotion Detection")
     st.subheader("Detect Emotions In Text or Voice")
 
-    option = st.selectbox("Choose Input Method", ("Type Text", "Record Voice"))
+    # Set "Record Voice" as the default option
+    option = st.selectbox("Choose Input Method", ("Record Voice", "Type Text"))
 
     if option == "Type Text":
         with st.form(key='my_form'):
@@ -61,12 +60,11 @@ def main():
         webrtc_ctx = webrtc_streamer(
             key="speech-to-text",
             mode=WebRtcMode.SENDRECV,
+            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+            media_stream_constraints={"audio": True, "video": False},
             audio_processor_factory=AudioProcessor,
-            client_settings=ClientSettings(
-                rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-                media_stream_constraints={"audio": True, "video": False},
-            ),
         )
+
         if webrtc_ctx.state.playing and webrtc_ctx.audio_processor:
             raw_text = webrtc_ctx.audio_processor.text
             if raw_text and raw_text != "Could not understand audio":
@@ -84,7 +82,7 @@ def process_text(raw_text):
 
         st.success("Prediction")
         emoji_icon = emotions_emoji_dict[prediction]
-        st.write(f"{prediction}:{emoji_icon}")
+        st.write(f"{prediction}: {emoji_icon}")
         st.write(f"Confidence: {np.max(probability)}")
 
     with col2:
