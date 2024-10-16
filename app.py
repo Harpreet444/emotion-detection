@@ -4,10 +4,9 @@ import pandas as pd
 import numpy as np
 import altair as alt
 import joblib
-from streamlit_webrtc import webrtc_streamer, AudioProcessorBase, ClientSettings
+from streamlit_webrtc import webrtc_streamer, AudioProcessorBase, ClientSettings, WebRtcMode
 import av
 import io
-from streamlit_webrtc import WebRtcMode
 
 # Load the emotion detection model
 pipe_lr = joblib.load(open("text_emotion.pkl", "rb"))
@@ -29,12 +28,12 @@ class AudioProcessor(AudioProcessorBase):
         self.text = None
 
     def recv(self, frame: av.AudioFrame) -> av.AudioFrame:
-        # Convert frame to raw audio data
-        audio_data = np.array(frame.to_ndarray()).flatten().astype(np.int16).tobytes()
-        
-        # Process the audio with SpeechRecognition
-        audio_stream = sr.AudioData(audio_data, frame.sample_rate, 2)  # 2: sample width (bytes)
-        
+        # Convert frame to numpy array (audio data)
+        raw_audio = frame.to_ndarray().flatten()
+        audio_data = np.int16(raw_audio).tobytes()
+
+        # Process the audio data with SpeechRecognition
+        audio_stream = sr.AudioData(audio_data, frame.sample_rate, 2)  # Adjust sample width and sample rate
         try:
             self.text = self.recognizer.recognize_google(audio_stream)
         except sr.UnknownValueError:
@@ -70,7 +69,7 @@ def main():
         )
         if webrtc_ctx.state.playing and webrtc_ctx.audio_processor:
             raw_text = webrtc_ctx.audio_processor.text
-            if raw_text:
+            if raw_text and raw_text != "Could not understand audio":
                 st.write("Transcribed Text: ", raw_text)
                 process_text(raw_text)
 
