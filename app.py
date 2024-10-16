@@ -66,10 +66,11 @@ def main():
         )
 
         if webrtc_ctx.state.playing and webrtc_ctx.audio_processor:
-            raw_text = webrtc_ctx.audio_processor.text
-            if raw_text and raw_text != "Could not understand audio":
-                st.write("Transcribed Text: ", raw_text)
-                process_text(raw_text)
+            if st.button("Stop"):
+                raw_text = webrtc_ctx.audio_processor.text
+                if raw_text and raw_text != "Could not understand audio":
+                    st.write("Transcribed Text: ", raw_text)
+                    process_text(raw_text)
 
 def process_text(raw_text):
     col1, col2 = st.columns(2)
