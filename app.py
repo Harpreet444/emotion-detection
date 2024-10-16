@@ -6,6 +6,7 @@ import joblib
 from streamlit_webrtc import webrtc_streamer, AudioProcessorBase, ClientSettings
 import av
 import io
+from streamlit_webrtc import WebRtcMode
 
 # Load the emotion detection model
 pipe_lr = joblib.load(open("text_emotion.pkl", "rb"))
@@ -59,7 +60,7 @@ def main():
     elif option == "Record Voice":
         webrtc_ctx = webrtc_streamer(
             key="speech-to-text",
-            mode="sendrecv",
+            mode=WebRtcMode.SENDRECV,
             audio_processor_factory=AudioProcessor,
             client_settings=ClientSettings(
                 rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
