@@ -6,7 +6,6 @@ import joblib
 from streamlit_webrtc import webrtc_streamer, AudioProcessorBase, ClientSettings
 import av
 import io
-import speech_recognition as sr
 
 # Load the emotion detection model
 pipe_lr = joblib.load(open("text_emotion.pkl", "rb"))
