@@ -9,3 +9,4 @@ neattext
 joblib
 tensorflow
 keras
+SpeechRecognition
