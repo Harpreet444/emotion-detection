@@ -9,4 +9,4 @@ neattext
 joblib
 tensorflow
 keras
-SpeechRecognition
+streamlit-webrtc
