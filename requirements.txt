@@ -1,0 +1,11 @@
+numpy
+pandas
+scikit-learn
+nltk
+pandas
+streamlit
+altair
+neattext
+joblib
+tensorflow
+keras
