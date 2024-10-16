@@ -11,3 +11,5 @@ tensorflow
 keras
 streamlit-webrtc
 SpeechRecognition
+asyncio
+av
