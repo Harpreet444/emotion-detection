@@ -6,6 +6,7 @@ import altair as alt
 import joblib
 from streamlit_webrtc import webrtc_streamer, AudioProcessorBase, WebRtcMode
 import av
+import threading
 
 # Load the emotion detection model
 pipe_lr = joblib.load(open("text_emotion.pkl", "rb"))
@@ -25,19 +26,24 @@ class AudioProcessor(AudioProcessorBase):
     def __init__(self):
         self.recognizer = sr.Recognizer()
         self.text = None
+        self.lock = threading.Lock()  # To manage threading safely
 
     def recv(self, frame: av.AudioFrame) -> av.AudioFrame:
         raw_audio = frame.to_ndarray().flatten()
         audio_data = np.int16(raw_audio).tobytes()
 
-        # Process the audio with SpeechRecognition
-        audio_stream = sr.AudioData(audio_data, frame.sample_rate, 2)
-        try:
-            self.text = self.recognizer.recognize_google(audio_stream)
-        except sr.UnknownValueError:
-            self.text = "Could not understand audio"
-        except sr.RequestError:
-            self.text = "API unavailable"
+        def process_audio():
+            audio_stream = sr.AudioData(audio_data, frame.sample_rate, 2)
+            try:
+                with self.lock:
+                    self.text = self.recognizer.recognize_google(audio_stream)
+            except sr.UnknownValueError:
+                self.text = "Could not understand audio"
+            except sr.RequestError:
+                self.text = "API unavailable"
+
+        # Run audio processing in a separate thread
+        threading.Thread(target=process_audio).start()
 
         return frame
 
